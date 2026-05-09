@@ -19,6 +19,7 @@
 - Network access and SSH Git remotes are expected to work; this repo was cloned from `git@github.com:noeldvictor/ARMSX2.git`.
 
 ## Git Workflow
+- Use the repository mainline branch for work by default. In this clone, the mainline branch is `master` (`origin/HEAD` points there).
 - After completing requested code or documentation changes, commit and push the branch unless the user explicitly asks not to.
 - Keep commit messages short and specific to the completed change.
 
