@@ -118,6 +118,11 @@ Open it later from Settings → Open ARMSX2 directory.</string>
     <string name="drawer_section_mods">Mods &amp; Cheats</string>
     <string name="drawer_enable_cheats">Enable cheats</string>
     <string name="drawer_apply_widescreen_patch">Apply widescreen patch</string>
+    <string name="drawer_action_cheat_toggles">Cheat toggles</string>
+    <string name="cheat_toggles_title">Cheat toggles</string>
+    <string name="cheat_toggles_no_game">Start a game first to choose individual cheats.</string>
+    <string name="cheat_toggles_none">No named cheats were found for this game.</string>
+    <string name="cheat_toggles_saved">Cheat toggles saved.</string>
     <string name="drawer_action_import_cheats">Import cheats</string>
     <string name="drawer_action_import_textures">Import textures</string>
     <string name="drawer_button_games">Games</string>

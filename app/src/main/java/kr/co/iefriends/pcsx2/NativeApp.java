@@ -87,6 +87,9 @@ public class NativeApp {
 	public static native String getGameSerial();
 	public static native int getGameCRC();
 	public static native void reloadCheats();
+	public static native String getCurrentGameCheatSections();
+	public static native String getEnabledCheatNames();
+	public static native void setEnabledCheatNames(String names);
 	public static native boolean hasWidescreenPatch();
 	public static native float getFPS();
 

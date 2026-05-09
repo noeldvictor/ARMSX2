@@ -32,6 +32,7 @@
 #include <fstream>
 #include <algorithm>
 #include <mutex>
+#include <vector>
 #include "pcsx2/CDVD/CDVDcommon.h"
 #include "pcsx2/CDVD/CDVD.h"
 
@@ -267,6 +268,38 @@ std::string GetJavaString(JNIEnv *env, jstring jstr) {
     return cpp_string;
 }
 
+static constexpr char JAVA_RECORD_SEPARATOR = '\x1E';
+static constexpr char JAVA_FIELD_SEPARATOR = '\x1F';
+
+static std::string JoinJavaStringList(const std::vector<std::string>& items)
+{
+    std::string result;
+    for (size_t i = 0; i < items.size(); i++)
+    {
+        if (i > 0)
+            result.push_back(JAVA_RECORD_SEPARATOR);
+        result.append(items[i]);
+    }
+    return result;
+}
+
+static std::vector<std::string> SplitJavaStringList(const std::string& value)
+{
+    std::vector<std::string> result;
+    size_t start = 0;
+    while (start <= value.length())
+    {
+        const size_t next = value.find(JAVA_RECORD_SEPARATOR, start);
+        std::string item = value.substr(start, next == std::string::npos ? std::string::npos : next - start);
+        if (!item.empty())
+            result.emplace_back(std::move(item));
+        if (next == std::string::npos)
+            break;
+        start = next + 1;
+    }
+    return result;
+}
+
 extern "C"
 JNIEXPORT jstring JNICALL
 Java_kr_co_iefriends_pcsx2_NativeApp_getDiskInfo(JNIEnv* env, jclass, jstring j_path) {
@@ -317,6 +350,60 @@ Java_kr_co_iefriends_pcsx2_NativeApp_reloadCheats(JNIEnv *env, jclass clazz) {
     const std::string serial = VMManager::GetDiscSerial();
     const u32 crc = VMManager::GetDiscCRC();
     Patch::ReloadPatches(serial, crc, true, true, true, false);
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_kr_co_iefriends_pcsx2_NativeApp_getCurrentGameCheatSections(JNIEnv* env, jclass clazz)
+{
+    (void)clazz;
+    if (!VMManager::HasValidVM())
+        return env->NewStringUTF("");
+
+    const std::string serial = VMManager::GetDiscSerial();
+    if (serial.empty())
+        return env->NewStringUTF("");
+
+    const u32 crc = VMManager::GetDiscCRC();
+    const Patch::PatchInfoList cheats = Patch::GetPatchInfo(serial, crc, true, true, nullptr);
+    std::string result;
+    for (const Patch::PatchInfo& info : cheats)
+    {
+        if (info.name.empty())
+            continue;
+        if (!result.empty())
+            result.push_back(JAVA_RECORD_SEPARATOR);
+        result.append(info.name);
+        result.push_back(JAVA_FIELD_SEPARATOR);
+        result.append(info.description);
+        result.push_back(JAVA_FIELD_SEPARATOR);
+        result.append(info.author);
+    }
+    return env->NewStringUTF(result.c_str());
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_kr_co_iefriends_pcsx2_NativeApp_getEnabledCheatNames(JNIEnv* env, jclass clazz)
+{
+    (void)clazz;
+    std::vector<std::string> enabled;
+    if (s_settings_interface)
+        enabled = s_settings_interface->GetStringList(Patch::CHEATS_CONFIG_SECTION, Patch::PATCH_ENABLE_CONFIG_KEY);
+    return env->NewStringUTF(JoinJavaStringList(enabled).c_str());
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_kr_co_iefriends_pcsx2_NativeApp_setEnabledCheatNames(JNIEnv* env, jclass clazz, jstring j_names)
+{
+    (void)clazz;
+    if (!s_settings_interface)
+        return;
+
+    const std::string names = GetJavaString(env, j_names);
+    s_settings_interface->SetStringList(Patch::CHEATS_CONFIG_SECTION, Patch::PATCH_ENABLE_CONFIG_KEY, SplitJavaStringList(names));
+    s_settings_interface->Save();
 }
 
 extern "C"

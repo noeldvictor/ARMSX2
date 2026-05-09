@@ -130,6 +130,8 @@ import kr.co.iefriends.pcsx2.utils.SDLSurface;
 import kr.co.iefriends.pcsx2.utils.NetworkAdapterCollector;
 
 public class MainActivity extends AppCompatActivity {
+    private static final char NATIVE_RECORD_SEPARATOR = 0x1E;
+    private static final char NATIVE_FIELD_SEPARATOR = 0x1F;
     private String m_szGamefile = "";
 
     private HIDDeviceManager mHIDDeviceManager;
@@ -2279,6 +2281,14 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
+        MaterialButton btnCheatToggles = findViewById(R.id.drawer_btn_cheat_toggles);
+        if (btnCheatToggles != null) {
+            btnCheatToggles.setOnClickListener(v -> {
+                closeInGameDrawer();
+                showCheatTogglesDialog();
+            });
+        }
+
         MaterialButton btnImportTextures = findViewById(R.id.drawer_btn_import_textures);
         if (btnImportTextures != null) {
             btnImportTextures.setOnClickListener(v -> {
@@ -2313,6 +2323,195 @@ public class MainActivity extends AppCompatActivity {
             updateOnScreenUiScaleLabel(uiScaleValue);
         }
         updatePauseButtonIcon();
+    }
+
+    private void showCheatTogglesDialog() {
+        String rawCheats = "";
+        try {
+            rawCheats = NativeApp.getCurrentGameCheatSections();
+        } catch (Throwable t) {
+            DebugLog.e("Cheats", "Failed to query cheat sections", t);
+        }
+
+        List<CheatToggleEntry> cheats = parseCheatToggleEntries(rawCheats);
+        if (cheats.isEmpty()) {
+            String serial = "";
+            try {
+                serial = NativeApp.getGameSerial();
+            } catch (Throwable ignored) {}
+            Toast.makeText(this,
+                    TextUtils.isEmpty(serial) ? R.string.cheat_toggles_no_game : R.string.cheat_toggles_none,
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        List<String> enabledCheats = new ArrayList<>();
+        try {
+            enabledCheats.addAll(splitNativeList(NativeApp.getEnabledCheatNames()));
+        } catch (Throwable t) {
+            DebugLog.e("Cheats", "Failed to query enabled cheat names", t);
+        }
+
+        Set<String> enabledSet = new HashSet<>(enabledCheats);
+        Set<String> currentNames = new HashSet<>();
+        android.widget.LinearLayout list = new android.widget.LinearLayout(this);
+        list.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int padding = dpToPx(8);
+        list.setPadding(padding, padding, padding, padding);
+
+        List<MaterialSwitch> switches = new ArrayList<>();
+        int onSurface = resolveThemeColor(android.R.attr.textColorPrimary);
+        int detailColor = resolveThemeColor(android.R.attr.textColorSecondary);
+        for (CheatToggleEntry cheat : cheats) {
+            currentNames.add(cheat.name);
+
+            MaterialSwitch itemSwitch = new MaterialSwitch(this);
+            itemSwitch.setText(cheat.name);
+            itemSwitch.setTextColor(onSurface);
+            itemSwitch.setTextSize(16f);
+            itemSwitch.setChecked(enabledSet.contains(cheat.name));
+            itemSwitch.setTag(cheat.name);
+            itemSwitch.setPadding(0, dpToPx(4), 0, dpToPx(4));
+            list.addView(itemSwitch, new android.widget.LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            switches.add(itemSwitch);
+
+            String detail = cheat.description;
+            if (!TextUtils.isEmpty(cheat.author)) {
+                detail = TextUtils.isEmpty(detail) ? "By " + cheat.author : detail + "\nBy " + cheat.author;
+            }
+            if (!TextUtils.isEmpty(detail)) {
+                TextView detailView = new TextView(this);
+                detailView.setText(detail);
+                detailView.setTextColor(detailColor);
+                detailView.setTextSize(12f);
+                detailView.setPadding(dpToPx(16), 0, dpToPx(16), dpToPx(10));
+                list.addView(detailView, new android.widget.LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            }
+        }
+
+        android.widget.ScrollView scrollView = new android.widget.ScrollView(this);
+        scrollView.addView(list, new android.widget.ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.cheat_toggles_title)
+                .setView(scrollView)
+                .setNegativeButton(android.R.string.cancel, (d, w) -> d.dismiss())
+                .setPositiveButton(R.string.action_save, null)
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
+            List<String> selected = new ArrayList<>();
+            for (MaterialSwitch itemSwitch : switches) {
+                Object tag = itemSwitch.getTag();
+                if (itemSwitch.isChecked() && tag instanceof String) {
+                    selected.add((String) tag);
+                }
+            }
+
+            List<String> merged = new ArrayList<>();
+            Set<String> added = new HashSet<>();
+            for (String enabled : enabledCheats) {
+                if (!currentNames.contains(enabled) && added.add(enabled)) {
+                    merged.add(enabled);
+                }
+            }
+            for (String name : selected) {
+                if (added.add(name)) {
+                    merged.add(name);
+                }
+            }
+
+            try {
+                NativeApp.setEnabledCheatNames(joinNativeList(merged));
+                if (!selected.isEmpty()) {
+                    MaterialSwitch globalCheats = findViewById(R.id.drawer_sw_enable_cheats);
+                    if (globalCheats != null && !globalCheats.isChecked()) {
+                        globalCheats.setChecked(true);
+                    } else {
+                        NativeApp.setEnableCheats(true);
+                    }
+                }
+                NativeApp.reloadCheats();
+                Toast.makeText(this, R.string.cheat_toggles_saved, Toast.LENGTH_SHORT).show();
+            } catch (Throwable t) {
+                DebugLog.e("Cheats", "Failed to save cheat toggles", t);
+                Toast.makeText(this, R.string.drawer_error_import_cheats_title, Toast.LENGTH_LONG).show();
+            }
+            dialog.dismiss();
+        }));
+        dialog.show();
+    }
+
+    private static List<CheatToggleEntry> parseCheatToggleEntries(@Nullable String rawCheats) {
+        List<CheatToggleEntry> entries = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (String record : splitNativeList(rawCheats, NATIVE_RECORD_SEPARATOR, false)) {
+            List<String> fields = splitNativeList(record, NATIVE_FIELD_SEPARATOR, true);
+            if (fields.isEmpty()) {
+                continue;
+            }
+
+            String name = fields.get(0).trim();
+            if (TextUtils.isEmpty(name) || !seen.add(name)) {
+                continue;
+            }
+
+            String description = fields.size() > 1 ? fields.get(1).trim() : "";
+            String author = fields.size() > 2 ? fields.get(2).trim() : "";
+            entries.add(new CheatToggleEntry(name, description, author));
+        }
+        return entries;
+    }
+
+    private static List<String> splitNativeList(@Nullable String raw) {
+        return splitNativeList(raw, NATIVE_RECORD_SEPARATOR, false);
+    }
+
+    private static List<String> splitNativeList(@Nullable String raw, char separator, boolean keepEmpty) {
+        List<String> values = new ArrayList<>();
+        if (TextUtils.isEmpty(raw)) {
+            return values;
+        }
+
+        int start = 0;
+        for (int i = 0; i <= raw.length(); i++) {
+            if (i == raw.length() || raw.charAt(i) == separator) {
+                String value = raw.substring(start, i);
+                if (keepEmpty || !TextUtils.isEmpty(value)) {
+                    values.add(value);
+                }
+                start = i + 1;
+            }
+        }
+        return values;
+    }
+
+    private static String joinNativeList(List<String> values) {
+        StringBuilder builder = new StringBuilder();
+        for (String value : values) {
+            if (TextUtils.isEmpty(value)) {
+                continue;
+            }
+            if (builder.length() > 0) {
+                builder.append(NATIVE_RECORD_SEPARATOR);
+            }
+            builder.append(value);
+        }
+        return builder.toString();
+    }
+
+    private static final class CheatToggleEntry {
+        final String name;
+        final String description;
+        final String author;
+
+        CheatToggleEntry(String name, String description, String author) {
+            this.name = name;
+            this.description = description;
+            this.author = author;
+        }
     }
 
     private void setupTouchRevealOverlay() {
@@ -6422,13 +6621,16 @@ public class MainActivity extends AppCompatActivity {
                     return sCheatSerialTokens.contains(serialToken);
                 }
             }
-            String titleToken = normalizeCheatLookupToken(!TextUtils.isEmpty(entry.gameTitle) ? entry.gameTitle : entry.fileTitleNoExt());
-            if (TextUtils.isEmpty(titleToken) || titleToken.length() < 8) {
+            java.util.Set<String> entryTitleTokens = new java.util.HashSet<>();
+            addNormalizedNameTokens(entry.gameTitle, entryTitleTokens);
+            addNormalizedNameTokens(entry.fileTitleNoExt(), entryTitleTokens);
+            entryTitleTokens.removeIf(token -> TextUtils.isEmpty(token) || token.length() < 8);
+            if (entryTitleTokens.isEmpty()) {
                 return false;
             }
             synchronized (sCheatIndexLock) {
-                for (String cheatName : sCheatNameTokens) {
-                    if (cheatName.equals(titleToken)) {
+                for (String entryTitle : entryTitleTokens) {
+                    if (sCheatNameTokens.contains(entryTitle)) {
                         return true;
                     }
                 }
@@ -6496,10 +6698,7 @@ public class MainActivity extends AppCompatActivity {
                 }
                 String baseName = stripFileExtension(child.getName());
                 addCheatSerialTokens(baseName, serialTokens);
-                String nameToken = normalizeCheatLookupToken(baseName);
-                if (!TextUtils.isEmpty(nameToken) && nameToken.length() >= 8) {
-                    nameTokens.add(nameToken);
-                }
+                addNormalizedNameTokens(baseName, nameTokens);
                 collectCheatPnachContentTokens(child, serialTokens, nameTokens);
             }
         }
@@ -6546,10 +6745,7 @@ public class MainActivity extends AppCompatActivity {
                     candidate = trimmed.substring(idx + 1);
                 }
             }
-            String token = normalizeCheatLookupToken(candidate);
-            if (!TextUtils.isEmpty(token) && token.length() >= 8) {
-                nameTokens.add(token);
-            }
+            addNormalizedNameTokens(candidate, nameTokens);
         }
 
         private static void addCheatSerialTokens(String value, java.util.Set<String> serialTokens) {
@@ -6567,6 +6763,35 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
             } catch (Throwable ignored) {}
+        }
+
+        private static void addNormalizedNameTokens(String value, java.util.Set<String> nameTokens) {
+            if (TextUtils.isEmpty(value) || nameTokens == null) {
+                return;
+            }
+            addNormalizedNameToken(value, nameTokens);
+            String withoutBracketTags = value
+                    .replaceAll("\\[[^\\]]*\\]", " ")
+                    .replaceAll("\\([^\\)]*\\)", " ")
+                    .replaceAll("\\{[^\\}]*\\}", " ")
+                    .replaceAll("\\s+", " ")
+                    .trim();
+            addNormalizedNameToken(withoutBracketTags, nameTokens);
+            int bracket = value.indexOf('[');
+            if (bracket > 0) {
+                addNormalizedNameToken(value.substring(0, bracket).trim(), nameTokens);
+            }
+            int paren = value.indexOf('(');
+            if (paren > 0) {
+                addNormalizedNameToken(value.substring(0, paren).trim(), nameTokens);
+            }
+        }
+
+        private static void addNormalizedNameToken(String value, java.util.Set<String> nameTokens) {
+            String token = normalizeCheatLookupToken(value);
+            if (!TextUtils.isEmpty(token) && token.length() >= 8) {
+                nameTokens.add(token);
+            }
         }
 
         private static String normalizeCheatLookupToken(String value) {

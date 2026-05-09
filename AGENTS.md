@@ -8,13 +8,22 @@
 ## Build And Verify
 - Use the Gradle wrapper from the repo root.
 - For Java/XML UI changes, prefer `./gradlew :app:compileDebugJavaWithJavac` or the Windows equivalent `.\gradlew.bat :app:compileDebugJavaWithJavac`.
+- A JDK is required. If Gradle reports `JAVA_HOME is not set and no 'java' command could be found`, install or point `JAVA_HOME` at a JDK before treating verification as a code failure.
 - Full APK builds are heavier because they can touch the native C++ core.
+- If a compile cannot run locally, still run `git diff --check` and parse touched XML resources to catch whitespace and resource syntax issues.
 - Do not add local signing keys, Discord credentials, generated `jniLibs`, `node_modules`, or other ignored build outputs.
+
+## Local Tooling
+- Prefer `rg` for search when available. If the bundled Windows `rg.exe` is blocked, use `git grep` inside the repo.
+- PowerShell may not accept Unix-style `&&` command chaining in this environment. Run separate commands or use native PowerShell syntax.
+- Network access and SSH Git remotes are expected to work; this repo was cloned from `git@github.com:noeldvictor/ARMSX2.git`.
 
 ## Android UI Notes
 - Keep game-grid changes scoped to `MainActivity.java` and the `item_game*.xml` layouts unless navigation or settings behavior needs to move.
 - Cover art defaults to the xlenore PS2 covers raw GitHub template. Preserve user overrides, but blank cover-source preferences should fall back to the hardcoded default.
 - Cheat badges on game covers should represent real `.pnach` files in the app data `cheats` directory. Do not light these badges from widescreen, 60 FPS, compatibility, or other patch folders.
+- Individual cheat toggles are named PNACH sections. Keep them name-based and sourced from the active game's cheat list; do not mix in widescreen or 60 FPS patch metadata.
+- When cheat files are imported, refresh any cached PNACH index and notify the game adapter so cover badges update without restarting the app.
 
 ## Native Core Notes
 - Treat `app/src/main/cpp/pcsx2` and third-party code as high-blast-radius. Keep edits small and verify with a native build when touching it.
