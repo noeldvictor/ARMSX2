@@ -130,6 +130,11 @@ public final class DataDirectoryManager {
         getPrefs(context).edit().putBoolean(KEY_PROMPT_DONE, true).apply();
     }
 
+    public static void copyBundledDataAssets(Context context) {
+        copyAssetAll(context, "resources");
+        copyAssetAll(context, "cheats");
+    }
+
     static void resetPrompt(Context context) {
         getPrefs(context).edit().remove(KEY_PROMPT_DONE).apply();
     }

@@ -2604,7 +2604,7 @@ public class SettingsActivity extends AppCompatActivity {
 				DataDirectoryManager.storeCustomDataRoot(getApplicationContext(), targetDir.getAbsolutePath(), uriString);
 				NativeApp.setDataRootOverride(targetDir.getAbsolutePath());
 				NativeApp.reinitializeDataRoot(targetDir.getAbsolutePath());
-				DataDirectoryManager.copyAssetAll(getApplicationContext(), "resources");
+				DataDirectoryManager.copyBundledDataAssets(getApplicationContext());
 			}
 			runOnUiThread(() -> {
 				dismissDataDirProgressDialog();

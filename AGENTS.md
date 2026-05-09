@@ -29,6 +29,7 @@
 - Cover art defaults to the xlenore PS2 covers raw GitHub template. Preserve user overrides, but blank cover-source preferences should fall back to the hardcoded default.
 - Cheat badges on game covers should represent real `.pnach` files in the app data `cheats` directory. Do not light these badges from widescreen, 60 FPS, compatibility, or other patch folders.
 - Individual cheat toggles are named PNACH sections. Keep them name-based and sourced from the active game's cheat list; do not mix in widescreen or 60 FPS patch metadata.
+- Bundled cheat PNACHs live under `app/src/main/assets/cheats` and are copied into the user's data-root `cheats` folder only when missing. Preserve user-edited existing PNACH files.
 - When cheat files are imported, refresh any cached PNACH index and notify the game adapter so cover badges update without restarting the app.
 
 ## Native Core Notes

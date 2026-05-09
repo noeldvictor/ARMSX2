@@ -328,7 +328,7 @@ public class OnboardingActivity extends AppCompatActivity {
                 NativeApp.setDataRootOverride(targetDir.getAbsolutePath());
                 NativeApp.reinitializeDataRoot(targetDir.getAbsolutePath());
                 LogcatRecorder.handleDataRootChanged();
-                DataDirectoryManager.copyAssetAll(getApplicationContext(), "resources");
+                DataDirectoryManager.copyBundledDataAssets(getApplicationContext());
             }
             runOnUiThread(() -> {
                 dismissDataDirProgressDialog();
