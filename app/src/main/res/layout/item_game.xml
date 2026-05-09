@@ -21,6 +21,26 @@
 		app:layout_constraintEnd_toEndOf="parent"
 		app:layout_constraintDimensionRatio="2:3"/>
 
+	<TextView
+		android:id="@+id/tv_cheat_tag"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_marginStart="8dp"
+		android:layout_marginTop="8dp"
+		android:background="@drawable/bg_cheat_tag"
+		android:paddingStart="8dp"
+		android:paddingTop="3dp"
+		android:paddingEnd="8dp"
+		android:paddingBottom="3dp"
+		android:text="@string/game_tag_cheats"
+		android:textAllCaps="true"
+		android:textColor="?attr/colorOnTertiaryContainer"
+		android:textSize="11sp"
+		android:textStyle="bold"
+		android:visibility="gone"
+		app:layout_constraintStart_toStartOf="@+id/img_cover"
+		app:layout_constraintTop_toTopOf="@+id/img_cover"/>
+
 	<!-- Overlay fallback: show filename centered when no cover image is available -->
 	<TextView
 		android:id="@+id/tv_cover_fallback"

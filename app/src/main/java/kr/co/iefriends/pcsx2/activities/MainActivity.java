@@ -757,12 +757,20 @@ public class MainActivity extends AppCompatActivity {
 
     // region Covers
     private static final String PREF_COVERS_URL = "covers_url_template";
+    private static final String DEFAULT_COVERS_URL_TEMPLATE = "https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/${serial}.jpg";
     private static final String PREF_MANUAL_COVER_PREFIX = "manual_cover:"; 
     private String getCoversUrlTemplate() {
-        return getSharedPreferences(PREFS, MODE_PRIVATE).getString(PREF_COVERS_URL, "");
+        String saved = getSharedPreferences(PREFS, MODE_PRIVATE).getString(PREF_COVERS_URL, null);
+        return TextUtils.isEmpty(saved) ? DEFAULT_COVERS_URL_TEMPLATE : saved;
     }
     private void setCoversUrlTemplate(String s) {
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(PREF_COVERS_URL, s == null ? "" : s).apply();
+        android.content.SharedPreferences.Editor editor = getSharedPreferences(PREFS, MODE_PRIVATE).edit();
+        if (TextUtils.isEmpty(s)) {
+            editor.remove(PREF_COVERS_URL);
+        } else {
+            editor.putString(PREF_COVERS_URL, s);
+        }
+        editor.apply();
     }
     private String getManualCoverUri(String gameKey) {
         try { return getSharedPreferences(PREFS, MODE_PRIVATE).getString(PREF_MANUAL_COVER_PREFIX + gameKey, null); } catch (Throwable ignored) { return null; }
@@ -3467,6 +3475,10 @@ public class MainActivity extends AppCompatActivity {
                                 : getString(R.string.drawer_toast_cheats_import_failed),
                         Toast.LENGTH_SHORT).show();
                 if (finalSuccess) {
+                    GamesAdapter.clearCheatPnachCache();
+                    if (gamesAdapter != null) {
+                        gamesAdapter.notifyDataSetChanged();
+                    }
                     try {
                         NativeApp.setEnableCheats(true);
                     } catch (Throwable ignored) {}
@@ -5137,6 +5149,10 @@ public class MainActivity extends AppCompatActivity {
             NativeApp.reloadCheats();
             NativeApp.setEnableCheats(false);
             NativeApp.setEnableCheats(true);
+            GamesAdapter.clearCheatPnachCache();
+            if (gamesAdapter != null) {
+                gamesAdapter.notifyDataSetChanged();
+            }
 
             Toast.makeText(this, "Cheat Imported: " + fileName, Toast.LENGTH_LONG).show();
 
@@ -6315,12 +6331,14 @@ public class MainActivity extends AppCompatActivity {
             final TextView tvRegion;
             final android.widget.ImageView img;
             final TextView tvOverlay;
+            final TextView tvCheatTag;
             VH(View v) {
                 super(v);
                 this.tv = v.findViewById(R.id.tv_title);
                 this.tvRegion = v.findViewById(R.id.tv_region);
                 this.img = v.findViewById(R.id.img_cover);
                 this.tvOverlay = v.findViewById(R.id.tv_cover_fallback);
+                this.tvCheatTag = v.findViewById(R.id.tv_cheat_tag);
             }
         }
         private final List<GameEntry> data;
@@ -6333,6 +6351,11 @@ public class MainActivity extends AppCompatActivity {
         private static final java.util.concurrent.ExecutorService sExec = java.util.concurrent.Executors.newFixedThreadPool(3);
         private static final java.util.Map<String, File> sLocalCoverFiles = java.util.Collections.synchronizedMap(new java.util.HashMap<>());
         private static final java.util.Set<String> sLocalCoverMissing = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
+        private static final Object sCheatIndexLock = new Object();
+        private static long sCheatIndexSignature = Long.MIN_VALUE;
+        private static String sCheatIndexPath = null;
+        private static final java.util.Set<String> sCheatSerialTokens = new java.util.HashSet<>();
+        private static final java.util.Set<String> sCheatNameTokens = new java.util.HashSet<>();
         static {
             int maxMem = (int) (Runtime.getRuntime().maxMemory() / 1024);
             int cacheSize = Math.max(1024 * 8, Math.min(1024 * 64, maxMem / 16)); 
@@ -6347,6 +6370,15 @@ public class MainActivity extends AppCompatActivity {
             sLocalCoverMissing.clear();
         }
 
+        static void clearCheatPnachCache() {
+            synchronized (sCheatIndexLock) {
+                sCheatIndexSignature = Long.MIN_VALUE;
+                sCheatIndexPath = null;
+                sCheatSerialTokens.clear();
+                sCheatNameTokens.clear();
+            }
+        }
+
         static void registerCachedCover(GameEntry entry, File file) {
             if (entry == null || file == null || !file.exists()) {
                 return;
@@ -6357,6 +6389,191 @@ public class MainActivity extends AppCompatActivity {
             }
             sLocalCoverFiles.put(key, file);
             sLocalCoverMissing.remove(key);
+        }
+
+        private static void bindCheatTag(VH holder, GameEntry entry) {
+            if (holder == null || holder.tvCheatTag == null) {
+                return;
+            }
+            boolean hasCheats = hasRealCheatPnach(holder.itemView.getContext(), entry);
+            holder.tvCheatTag.setVisibility(hasCheats ? View.VISIBLE : View.GONE);
+            if (hasCheats) {
+                holder.tvCheatTag.bringToFront();
+            }
+        }
+
+        private static boolean hasRealCheatPnach(Context ctx, GameEntry entry) {
+            if (ctx == null || entry == null) {
+                return false;
+            }
+            Context appCtx = ctx.getApplicationContext();
+            if (appCtx == null) {
+                appCtx = ctx;
+            }
+            File dataRoot = DataDirectoryManager.getDataRoot(appCtx);
+            if (dataRoot == null) {
+                return false;
+            }
+            File cheatsDir = new File(dataRoot, "cheats");
+            refreshCheatPnachIndex(cheatsDir);
+            String serialToken = normalizeCheatLookupToken(entry.serial);
+            if (!TextUtils.isEmpty(serialToken)) {
+                synchronized (sCheatIndexLock) {
+                    return sCheatSerialTokens.contains(serialToken);
+                }
+            }
+            String titleToken = normalizeCheatLookupToken(!TextUtils.isEmpty(entry.gameTitle) ? entry.gameTitle : entry.fileTitleNoExt());
+            if (TextUtils.isEmpty(titleToken) || titleToken.length() < 8) {
+                return false;
+            }
+            synchronized (sCheatIndexLock) {
+                for (String cheatName : sCheatNameTokens) {
+                    if (cheatName.equals(titleToken)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        private static void refreshCheatPnachIndex(File cheatsDir) {
+            long signature = computeCheatPnachSignature(cheatsDir);
+            String path = cheatsDir != null ? cheatsDir.getAbsolutePath() : "";
+            synchronized (sCheatIndexLock) {
+                if (signature == sCheatIndexSignature && TextUtils.equals(path, sCheatIndexPath)) {
+                    return;
+                }
+                sCheatIndexSignature = signature;
+                sCheatIndexPath = path;
+                sCheatSerialTokens.clear();
+                sCheatNameTokens.clear();
+                collectCheatPnachTokens(cheatsDir, sCheatSerialTokens, sCheatNameTokens);
+            }
+        }
+
+        private static long computeCheatPnachSignature(File dir) {
+            if (dir == null || !dir.isDirectory()) {
+                return 0L;
+            }
+            long signature = 17L;
+            File[] children = dir.listFiles();
+            if (children == null) {
+                return signature;
+            }
+            for (File child : children) {
+                if (child == null) {
+                    continue;
+                }
+                if (child.isDirectory()) {
+                    signature = (signature * 31L) + computeCheatPnachSignature(child);
+                } else if (isRealCheatPnachFile(child)) {
+                    signature = (signature * 31L) + child.getName().hashCode();
+                    signature = (signature * 31L) + child.lastModified();
+                    signature = (signature * 31L) + child.length();
+                }
+            }
+            return signature;
+        }
+
+        private static void collectCheatPnachTokens(File dir, java.util.Set<String> serialTokens, java.util.Set<String> nameTokens) {
+            if (dir == null || !dir.isDirectory()) {
+                return;
+            }
+            File[] children = dir.listFiles();
+            if (children == null) {
+                return;
+            }
+            for (File child : children) {
+                if (child == null) {
+                    continue;
+                }
+                if (child.isDirectory()) {
+                    collectCheatPnachTokens(child, serialTokens, nameTokens);
+                    continue;
+                }
+                if (!isRealCheatPnachFile(child)) {
+                    continue;
+                }
+                String baseName = stripFileExtension(child.getName());
+                addCheatSerialTokens(baseName, serialTokens);
+                String nameToken = normalizeCheatLookupToken(baseName);
+                if (!TextUtils.isEmpty(nameToken) && nameToken.length() >= 8) {
+                    nameTokens.add(nameToken);
+                }
+                collectCheatPnachContentTokens(child, serialTokens, nameTokens);
+            }
+        }
+
+        private static boolean isRealCheatPnachFile(File file) {
+            if (file == null || !file.isFile() || file.length() <= 0L) {
+                return false;
+            }
+            String name = file.getName();
+            if (TextUtils.isEmpty(name) || !name.toLowerCase(Locale.US).endsWith(".pnach")) {
+                return false;
+            }
+            String lower = name.toLowerCase(Locale.US);
+            return !(lower.contains("widescreen")
+                    || lower.contains("wide-screen")
+                    || lower.contains("wide_screen")
+                    || lower.contains("60fps")
+                    || lower.contains("60-fps")
+                    || lower.contains("60_fps")
+                    || lower.contains("60 fps"));
+        }
+
+        private static void collectCheatPnachContentTokens(File file, java.util.Set<String> serialTokens, java.util.Set<String> nameTokens) {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), java.nio.charset.StandardCharsets.UTF_8))) {
+                String line;
+                int lines = 0;
+                while ((line = reader.readLine()) != null && lines < 80) {
+                    addCheatSerialTokens(line, serialTokens);
+                    addCheatTitleToken(line, nameTokens);
+                    lines++;
+                }
+            } catch (Throwable ignored) {}
+        }
+
+        private static void addCheatTitleToken(String line, java.util.Set<String> nameTokens) {
+            if (TextUtils.isEmpty(line) || nameTokens == null) {
+                return;
+            }
+            String trimmed = line.trim();
+            String candidate = null;
+            if (trimmed.regionMatches(true, 0, "gametitle", 0, "gametitle".length())) {
+                int idx = trimmed.indexOf('=');
+                if (idx >= 0 && idx + 1 < trimmed.length()) {
+                    candidate = trimmed.substring(idx + 1);
+                }
+            }
+            String token = normalizeCheatLookupToken(candidate);
+            if (!TextUtils.isEmpty(token) && token.length() >= 8) {
+                nameTokens.add(token);
+            }
+        }
+
+        private static void addCheatSerialTokens(String value, java.util.Set<String> serialTokens) {
+            if (TextUtils.isEmpty(value) || serialTokens == null) {
+                return;
+            }
+            try {
+                java.util.regex.Matcher matcher = java.util.regex.Pattern
+                        .compile("\\b([A-Z]{4})[-_ .]?([0-9]{3,5})(?:\\.?([0-9]{2}))?\\b", java.util.regex.Pattern.CASE_INSENSITIVE)
+                        .matcher(value);
+                while (matcher.find()) {
+                    String token = normalizeCheatLookupToken(matcher.group());
+                    if (!TextUtils.isEmpty(token)) {
+                        serialTokens.add(token);
+                    }
+                }
+            } catch (Throwable ignored) {}
+        }
+
+        private static String normalizeCheatLookupToken(String value) {
+            if (TextUtils.isEmpty(value)) {
+                return "";
+            }
+            return value.toUpperCase(Locale.US).replaceAll("[^A-Z0-9]", "");
         }
     GamesAdapter(List<GameEntry> d, OnClick oc) { data = d; filtered.addAll(d); onClick = oc; setHasStableIds(true); }
         void update(List<GameEntry> d) { clearLocalCoverCache(); data.clear(); data.addAll(d); applyFilter(currentFilter); }
@@ -6405,6 +6622,7 @@ public class MainActivity extends AppCompatActivity {
                     (e.serial != null ? e.serial : "") + "|" +
                     (e.gameTitle != null ? e.gameTitle : "");
             if (requestKey.equals(holder.img.getTag(R.id.tag_request_key))) {
+                bindCheatTag(holder, e);
                 return;
             }
             holder.img.setTag(R.id.tag_request_key, requestKey);
@@ -6495,6 +6713,7 @@ public class MainActivity extends AppCompatActivity {
                 holder.tvRegion.setText(e.region != null ? e.region : "");
                 holder.tvRegion.setVisibility(TextUtils.isEmpty(e.region) ? View.GONE : View.VISIBLE);
             }
+            bindCheatTag(holder, e);
             holder.itemView.setOnClickListener(v -> onClick.onClick(e));
             holder.itemView.setOnKeyListener((v, keyCode, event) -> {
                 if (event.getAction() != KeyEvent.ACTION_DOWN) return false;

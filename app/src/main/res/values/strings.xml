@@ -330,6 +330,7 @@ Open it later from Settings → Open ARMSX2 directory.</string>
     <string name="cover_prefetch_none">No covers could be downloaded.</string>
     <string name="cover_prefetch_running">Cover download already in progress.</string>
     <string name="cover_prefetch_no_connection">Connect to the internet to download covers.</string>
+    <string name="game_tag_cheats">Cheats</string>
     <string name="action_save">Save</string>
     <string name="per_game_settings_enable_custom">Enable per-game settings</string>
     <string name="per_game_settings_widescreen">Apply widescreen patch</string>
