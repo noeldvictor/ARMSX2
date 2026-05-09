@@ -18,6 +18,10 @@
 - PowerShell may not accept Unix-style `&&` command chaining in this environment. Run separate commands or use native PowerShell syntax.
 - Network access and SSH Git remotes are expected to work; this repo was cloned from `git@github.com:noeldvictor/ARMSX2.git`.
 
+## Git Workflow
+- After completing requested code or documentation changes, commit and push the branch unless the user explicitly asks not to.
+- Keep commit messages short and specific to the completed change.
+
 ## Android UI Notes
 - Keep game-grid changes scoped to `MainActivity.java` and the `item_game*.xml` layouts unless navigation or settings behavior needs to move.
 - Cover art defaults to the xlenore PS2 covers raw GitHub template. Preserve user overrides, but blank cover-source preferences should fall back to the hardcoded default.
