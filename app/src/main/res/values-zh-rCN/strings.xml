@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ARMSX2</string>
+    <string name="app_name">ARMSX2 Thor</string>
     <string name="app_name_tv">ARMSX2 Android TV 版</string>
     <string name="app_name_desktop">ARMSX2 桌面版</string>
     <string name="controller_mapping_button">编辑控制器映射</string>

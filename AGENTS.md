@@ -16,13 +16,18 @@
 ## Local Tooling
 - Prefer `rg` for search when available. If the bundled Windows `rg.exe` is blocked, use `git grep` inside the repo.
 - PowerShell may not accept Unix-style `&&` command chaining in this environment. Run separate commands or use native PowerShell syntax.
-- Network access and SSH Git remotes are expected to work; this repo was cloned from `git@github.com:noeldvictor/ARMSX2.git`.
+- Network access and SSH Git remotes are expected to work; this fork pushes to `git@github.com:noeldvictor/ARMSX2-thor-experiment.git`.
 
 ## Git Workflow
 - Use only the repository default/mainline branch for work. In this clone, user references to `main` mean the current mainline branch, `master` (`origin/HEAD` points there).
 - Do not create or switch to `codex/...` or other feature branches unless the user explicitly asks for a branch.
 - After completing requested code or documentation changes, commit and push the branch unless the user explicitly asks not to.
 - Keep commit messages short and specific to the completed change.
+
+## Fork Identity
+- Treat this as the personal AYN Thor experiment fork, not upstream ARMSX2 branding.
+- README changes should keep the tone clear: vibe-coded with AI, personal use, unsupported, no stability guarantee, no issue/request queue, and fork-it-yourself friendly.
+- Do not add an APK/release section to `README.md` unless the user explicitly reverses that preference.
 
 ## Android UI Notes
 - Keep game-grid changes scoped to `MainActivity.java` and the `item_game*.xml` layouts unless navigation or settings behavior needs to move.

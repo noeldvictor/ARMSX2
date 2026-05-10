@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">ARMSX2</string>
+    <string name="app_name">ARMSX2 Thor</string>
     <string name="app_name_tv">ARMSX2 لتلفزيون أندرويد</string>
     <string name="app_name_desktop">ARMSX2 لسطح المكتب</string>
     <string name="controller_mapping_button">تحرير تعيين وحدة التحكم</string>

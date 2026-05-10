@@ -1,87 +1,74 @@
 <div align="center">
 
-![ARMSX2](app_icons/icon.png)
+![ARMSX2 Thor Experiment](docs/media/armsx2-thor-experiment-hero.png)
 
-# ARMSX2
+# ARMSX2 Thor Experiment
 
-[![License](https://img.shields.io/github/license/ARMSX2/ARMSX2)](https://www.gnu.org/licenses/gpl-3.0.html)
-[![Discord](https://img.shields.io/discord/914421153827794975?logo=discord&logoColor=white&label=ARMSX2%20Discord&color=5865F2)](https://discord.gg/6yyawTtCnX)
-(https://patreon.com/ARMSX2)
-[![Nightly Build](https://github.com/ARMSX2/ARMSX2/actions/workflows/android_nightly_build.yml/badge.svg)](https://github.com/ARMSX2/ARMSX2/actions/workflows/android_nightly_build.yml)
+Personal, unsupported AYN Thor experiment fork of ARMSX2.
+
+![License](https://img.shields.io/badge/license-GPLv3-42e0ff)
+![Status](https://img.shields.io/badge/status-experiment-ffb039)
+![AI](https://img.shields.io/badge/vibe--coded_with-AI-6ee7b7)
 
 </div>
 
-ARMSX2 is a free and open-source PlayStation 2 (PS2) emulator for ARM devices based on PCSX2 and PCSX2_ARM64. Its purpose is to emulate the PS2's hardware for ARM devices, using a recompiler that operates as x86 -> arm64, not native arm64, this is subject to change as development continues. ARMSX2 allows you to play PS2 games on your mobile android phone, as well as on iOS, Linux, and Windows devices.
+This is a fork I am using to make ARMSX2 feel better on the AYN Thor. It is vibe-coded with AI, changed quickly, and intentionally opinionated. No stability guarantee, no support promise, no polish promise.
 
-## Project Details
+If that bothers you, look elsewhere. Fork it, break it, fix it, make it yours.
 
-ARMSX2 began after years of there being no open source PS2 emulator for ARM systems, and so developer [@MoonPower](https://github.com/momo-AUX1) with the support of [@jpolo1224](https://github.com/jpolo1224) decided to try their hand at porting a new PS2 emulator for Android, forking from the repository PCSX2_ARM64 by developer Pontos. Moon has and will continue doing his best to fill in the gaps and make this into a complete emulator, with the goal to have version parity with PCSX2. This project is not officially associated with PCSX2, and we are not associated with any other forks made from the original repository. This is our own attempt at continuing PS2 emulation on Android, iOS, and MacOS. The emulator currently operates as x86 -> arm64, not native arm64, so the performance may not be as good as AetherSX2 currently, however things are subject to change as development goes on.
+Please do not open issues expecting support or a roadmap. This is not a product queue. It is a personal experiment that happens to be public.
 
-## System Requirements
+Bring your own legally dumped PS2 BIOS and games. Use this only for personal experimentation.
 
-ARMSX2 supports any ARM capable device, including Android, iOS, Linux, and Windows platforms (eventually, should work as well). Please note that performance will also depend on your devices hardware capabilities, we have done our best to optimize for low end devices and will continue to do so.
+## Screenshots
 
-Please note that a BIOS dump from a legitimately-owned PS2 console is required to use the emulator.
+Screenshots are from a personal AYN Thor test device.
 
-## Website
-
-→ <https://armsx2.net/>
-
-Any other website is not affiliated with ARMSX2. 
-
-## Translation 
-
-[Help translate ARMSX2](https://crowdin.com/project/armsx2-translations/invite?h=940eaf6355b31b5fdb1771183c694ca32710218)
-
-## Download
-
-ARMSX2 is available on the Google Play Store once released. 
-
-[<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="80"/>](https://play.google.com/store/apps/details?id=come.nanodata.armsx2)
-
-## Affiliation
-
-We are NOT affiliated with ARM Holding LTD in any way shape or form. We chose the name ARMSX2 since it runs on ARM devices, and seek no commercial incentive from the emulator. The most we accept is voluntary donations. Thank you. 
-
-## Additional Credits
-
-[PCSX2](https://github.com/PCSX2/pcsx2) - ARMSX2 would not be possible without the legendary work from the PCSX2 team and their patience and understanding regarding this project!
-
-[PCSX2_ARM64](https://github.com/pontos2024/PCSX2_ARM64) - ARMSX2 originally started off as a fork of developer Pontos work. 
-
-Thank you to [@Vivimagic](https://github.com/Vivimagic) for creating and working on the logo! 
-
-Thank you to developers [@tanosshi](https://github.com/tanosshi) [@jpolo1224](https://github.com/jpolo1224) [@MoonPower](https://github.com/momo-AUX1) for working on the ARMSX2 website!
-
-## Roadmap
-
-Here's a roadmap of the things you can expect from ARMSX2 in the future:
-
-| Task | Priority |
+| Game selector | In-game OSD |
 | --- | --- |
-| Fix Eclipse GPUs | High |
-| Fix Mali Crashes | Highest |
-| Nintendo Switch support | Medium |
-| Update to latest core | High |
-| Update design to Material expressive | Low |
-| Migrate to Kotlin | Medium | 
+| ![ARMSX2 Thor game selector with cover art and cheat badge](docs/media/armsx2-library-device.png) | ![ARMSX2 Thor in-game OSD drawer](docs/media/armsx2-osd-device.png) |
 
+## Where This Fork Diverges
 
-## Why are there .js and .jsx files?
+- AYN Thor is the target device for layout, workflow, and sanity checks.
+- The game selector favors cover-first browsing and hardcoded xlenore PS2 cover defaults.
+- Cover cards show `CHEATS` only when real `.pnach` files exist in the selected ARMSX2 data root `cheats` folder.
+- Bundled real cheat PNACHs from the NetherSX2 patch collection are included under `app/src/main/assets/cheats` and copied only when missing.
+- Cheat controls are split by PNACH section so each cheat section can be toggled on its own.
+- Widescreen and 60 FPS patch metadata are intentionally not used for cheat badges or cheat switches.
+- The in-game drawer has Thor-friendly shortcuts for renderer changes, fast forward, game state, disc changes, imports, and cheat toggles.
+- The React Native experiment remains present, but the native Android Java/XML UI is the active path.
 
-Originally as a curious idea the react native screens were just an experiment i decided to keep they are extremely barebones and will either be finalized in a seperate branch (armsx2-rn) or removed altogether They do not affect performance as they are hidden by default and not executed. Any PR to them is welcome!
+## What This Is Not
 
-### To start developing with ARMSX2 RN do the following:
+- Not official ARMSX2.
+- Not PCSX2.
+- Not a general support fork.
+- Not a compatibility promise.
+- Not a place to request features.
 
-1. First install the deps:
-```sh
-(npm/pnpm/bun) install
+## Build From Source
+
+From the repo root on Windows:
+
+```powershell
+.\gradlew.bat :app:assembleUnrestrictedDebug
 ```
 
+For a quicker Java/XML check:
 
-2. Compile ARMSX2 With the react native core:
-```sh
-./gradlew assembleDebug -PenableRN=true
+```powershell
+.\gradlew.bat :app:compileDebugJavaWithJavac
 ```
 
-And now you will have a new button appear on the top right of the game selector screen click it and start developing with hot reload and see your changes without recompiling (note: compiling RN switches the emucore from static to shared).
+## Credits
+
+This fork stands on the work of:
+
+- [ARMSX2](https://github.com/ARMSX2/ARMSX2)
+- [PCSX2](https://github.com/PCSX2/pcsx2)
+- [PCSX2_ARM64](https://github.com/pontos2024/PCSX2_ARM64)
+- [xlenore/ps2-covers](https://github.com/xlenore/ps2-covers)
+- [NetherSX2-patch](https://github.com/noeldvictor/NetherSX2-patch)
+
+Licensed under GPLv3. See [COPYING.GPLv3](COPYING.GPLv3).
